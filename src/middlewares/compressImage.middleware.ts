@@ -5,7 +5,7 @@ import fs from "fs";
 import { exec } from "node:child_process";
 import { promisify } from "util";
 import { imageSize } from 'image-size'
-import { removeFile } from "../utils/imageMagick";
+import { removeFile, pointsToDimensions, getDimensions } from "../utils/imageMagick";
 
 const execPromise = promisify(exec);
 
@@ -13,6 +13,10 @@ interface CompressImageOptions {
   tempPath: string;
   newPath: string;
   filename: string;
+  cropWidth: number | undefined;
+  cropHeight: number | undefined;
+  cropX: number | undefined;
+  cropY: number | undefined;
 }
 
 interface CompressedImage {
@@ -27,7 +31,19 @@ interface CompressedImage {
 async function compressImage(opts: CompressImageOptions) {
   const newPath = opts.newPath + "/" + path.parse(opts.filename).name + ".webp";
 
-  await execPromise(`./pixiedust ${opts.tempPath} ${newPath}`).then(async (err) => {
+
+  let crop = "";
+  if (opts.cropWidth !== undefined) {
+    crop += `--crop --crop-width ${opts.cropWidth} --crop-height ${opts.cropHeight}`;
+  }
+
+  if (opts.cropX !== undefined) {
+    crop += ` --crop-x ${opts.cropX} --crop-y ${opts.cropY}`;
+  }
+
+  console.log(crop)
+
+  await execPromise(`./pixiedust -i ${opts.tempPath} -o ${newPath} ${crop}`).then(async (err) => {
     if (err.stderr != "") {
       console.log(`Failed to compress!! ${err.stderr}`);
       return [null, "Something went wrong while compressing image. Error: " + err] as const;
@@ -47,7 +63,14 @@ async function compressImage(opts: CompressImageOptions) {
     }, null] as const;
 }
 
-export const compressImageMiddleware = () => {
+type Opts = Omit<
+    Omit<Omit<Omit<CompressImageOptions, "tempPath">, "filename">, "newPath">,
+    "crop"
+> & {
+  allowCrop?: boolean;
+};
+
+export const compressImageMiddleware = (opts: Opts) => {
   return async (req: Request, res: Response) => {
     if (req?.file?.shouldCompress) {
       let closed = false;
@@ -56,10 +79,29 @@ export const compressImageMiddleware = () => {
       });
       const tempFilePath = path.join(tempDirPath, req.file.tempFilename);
 
+      let strPoints = req.query.points as string | undefined;
+      let crop:
+          | [number, number, number, number]
+          | [number, number]
+          | [undefined, undefined, undefined, undefined] = [undefined, undefined, undefined, undefined];
+      if (opts.allowCrop) {
+        const [dimensions, points, dimErr] = pointsToDimensions(strPoints);
+        if (dimErr) {
+          return res.status(403).json(dimErr);
+        }
+        crop = dimensions
+            ? [dimensions.width, dimensions.height, points[0]!, points[1]!]
+            : [opts.size[0], opts.size[1]];
+      }
+
       const [result, err] = await compressImage({
         tempPath: tempFilePath,
         newPath: tempDirPath,
-        filename: req.file.tempFilename
+        filename: req.file.tempFilename,
+        cropWidth: crop[0],
+        cropHeight: crop[1],
+        cropX: crop[2],
+        cropY: crop[3]
       });
 
       if (err) {
