@@ -8,6 +8,8 @@ import { imageSize } from 'image-size'
 import { removeFile, pointsToDimensions, getDimensions } from "../utils/imageMagick";
 
 const execPromise = promisify(exec);
+const imageSizePromise = promisify(imageSize)
+
 
 interface CompressImageOptions {
   tempPath: string;
@@ -44,16 +46,23 @@ async function compressImage(opts: CompressImageOptions) {
 
   let size = `--width ${opts.size[0]} --height ${opts.size[1]}`
 
-  console.log(crop)
 
-  await execPromise(`./pixiedust -i ${opts.tempPath} -o ${newPath} ${crop} ${size}`).then(async (err) => {
+  const pixiedustStatus = await execPromise(`./pixiedust -i ${opts.tempPath} -o ${newPath} ${crop} ${size}`).then(async (err) => {
     if (err.stderr != "") {
       console.log(`Failed to compress!! ${err.stderr}`);
-      return [null, "Something went wrong while compressing image. Error: " + err] as const;
+      return;
     }
+    return true;
   });
+  
+  if (!pixiedustStatus) {
+    return [null, "Something went wrong while compressing image."] as const;
+  }
+  const dimensions = await imageSizePromise(newPath).catch(err => console.log(err))
 
-  const dimensions = imageSize(newPath);
+  if (!dimensions) {
+    return [null, "Something went wrong while compressing image."] as const;
+  }
 
   return [
     {
