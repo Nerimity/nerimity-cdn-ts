@@ -17,6 +17,7 @@ interface CompressImageOptions {
   cropHeight: number | undefined;
   cropX: number | undefined;
   cropY: number | undefined;
+  size: [number, number, "fit" | "fill"];
 }
 
 interface CompressedImage {
@@ -41,9 +42,11 @@ async function compressImage(opts: CompressImageOptions) {
     crop += ` --crop-x ${opts.cropX} --crop-y ${opts.cropY}`;
   }
 
+  let size = `--width ${opts.size[0]} --height ${opts.size[1]}`
+
   console.log(crop)
 
-  await execPromise(`./pixiedust -i ${opts.tempPath} -o ${newPath} ${crop}`).then(async (err) => {
+  await execPromise(`./pixiedust -i ${opts.tempPath} -o ${newPath} ${crop} ${size}`).then(async (err) => {
     if (err.stderr != "") {
       console.log(`Failed to compress!! ${err.stderr}`);
       return [null, "Something went wrong while compressing image. Error: " + err] as const;
@@ -94,14 +97,25 @@ export const compressImageMiddleware = (opts: Opts) => {
             : [opts.size[0], opts.size[1]];
       }
 
+
+      let cropX: number | undefined = undefined;
+      if (crop[2] !== undefined && crop[0] !==  undefined) {
+        cropX = Math.round(crop[2] + (crop[0] / 2));
+      }
+      let cropY: number | undefined = undefined;
+      if (crop[3] !== undefined && crop[1] !==  undefined) {
+        cropY = Math.round(crop[3] + (crop[1] / 2));
+      }
+
       const [result, err] = await compressImage({
         tempPath: tempFilePath,
         newPath: tempDirPath,
         filename: req.file.tempFilename,
         cropWidth: crop[0],
         cropHeight: crop[1],
-        cropX: crop[2],
-        cropY: crop[3]
+        cropX,
+        cropY,
+        size: opts.size
       });
 
       if (err) {
