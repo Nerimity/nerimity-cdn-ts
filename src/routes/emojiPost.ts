@@ -13,6 +13,7 @@ export function handleEmojisPostRoute(server: Server) {
     tempFileMiddleware({ image: true }),
     compressImageMiddleware({
       size: [100, 100, "fit"],
+      quality: 80
     }),
     route,
     { max_body_length: env.imageMaxBodyLength }

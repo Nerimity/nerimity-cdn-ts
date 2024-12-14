@@ -5,7 +5,7 @@ import fs from "fs";
 import { exec } from "node:child_process";
 import { promisify } from "util";
 import { imageSize } from 'image-size'
-import { removeFile, pointsToDimensions, getDimensions } from "../utils/imageMagick";
+import { removeFile, pointsToDimensions } from "../utils/imageMagick";
 
 const execPromise = promisify(exec);
 const imageSizePromise = promisify(imageSize)
@@ -15,11 +15,12 @@ interface CompressImageOptions {
   tempPath: string;
   newPath: string;
   filename: string;
-  cropWidth: number | undefined;
-  cropHeight: number | undefined;
-  cropX: number | undefined;
-  cropY: number | undefined;
+  cropWidth?: number | undefined;
+  cropHeight?: number | undefined;
+  cropX?: number | undefined;
+  cropY?: number | undefined;
   size: [number, number, "fit" | "fill"];
+  quality?: number;
 }
 
 interface CompressedImage {
@@ -46,8 +47,14 @@ async function compressImage(opts: CompressImageOptions) {
 
   let size = `--width ${opts.size[0]} --height ${opts.size[1]}`
 
+  let quality = "";
 
-  const pixiedustStatus = await execPromise(`./pixiedust -i ${opts.tempPath} -o ${newPath} ${crop} ${size}`).then(async (err) => {
+  if (opts.quality) {
+    quality = `--quality ${opts.quality}`
+  }
+
+
+  const pixiedustStatus = await execPromise(`./pixiedust -i ${opts.tempPath} -o ${newPath} ${crop} ${size} ${quality}`).then(async (err) => {
     if (err.stderr != "") {
       console.log(`Failed to compress!! ${err.stderr}`);
       return;
