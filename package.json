@@ -31,6 +31,7 @@
     "get-audio-duration": "^4.0.1",
     "gm": "^1.25.0",
     "hyper-express": "^6.17.2",
+    "image-size": "^1.1.1",
     "redis": "^4.7.0",
     "sharp": "^0.33.5",
     "stream-mime-type": "^2.0.0"

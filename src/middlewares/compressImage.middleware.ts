@@ -1,19 +1,101 @@
 import { Request, Response } from "hyper-express";
-import {
-  compressImage,
-  CompressImageOptions,
-  pointsToDimensions,
-  removeFile,
-} from "../utils/imageMagick";
 import path from "path";
 import { tempDirPath } from "../utils/Folders";
+import fs from "fs";
+import { exec } from "node:child_process";
+import { promisify } from "util";
+import { imageSize } from 'image-size'
+import { removeFile, pointsToDimensions } from "../utils/imageMagick";
+
+const execPromise = promisify(exec);
+const imageSizePromise = promisify(imageSize)
+
+
+interface CompressImageOptions {
+  tempPath: string;
+  newPath: string;
+  filename: string;
+  cropWidth?: number | undefined;
+  cropHeight?: number | undefined;
+  cropX?: number | undefined;
+  cropY?: number | undefined;
+  size: [number, number];
+  gifSize?: [number, number];
+  quality?: number;
+}
+
+interface CompressedImage {
+  filesize: number;
+  filename: string;
+  newFilename: string;
+  height: number;
+  width: number;
+  animated: boolean;
+}
+
+async function compressImage(opts: CompressImageOptions) {
+  const newPath = opts.newPath + "/" + path.parse(opts.filename).name + ".webp";
+
+
+  let crop = "";
+  if (opts.cropWidth !== undefined) {
+    crop += `--crop --crop-width ${opts.cropWidth} --crop-height ${opts.cropHeight}`;
+  }
+
+  if (opts.cropX !== undefined) {
+    crop += ` --crop-x ${opts.cropX} --crop-y ${opts.cropY}`;
+  }
+
+  let size = `--width ${opts.size[0]} --height ${opts.size[1]}`;
+  
+  let gifSize = "";
+  
+  if (opts.gifSize) {
+    gifSize = `--gif-width ${opts.gifSize[0]} --gif-height ${opts.gifSize[1]}`;
+  }
+
+  let quality = "";
+
+  if (opts.quality) {
+    quality = `--quality ${opts.quality}`
+  }
+
+
+  const pixiedustStatus = await execPromise(`./pixiedust -i ${opts.tempPath} -o ${newPath} ${crop} ${size} ${gifSize} ${quality}`).then(async (err) => {
+    if (err.stderr != "") {
+      console.log(`Failed to compress!! ${err.stderr}`);
+      return;
+    }
+    return true;
+  });
+  
+  if (!pixiedustStatus) {
+    return [null, "Something went wrong while compressing image."] as const;
+  }
+  const dimensions = await imageSizePromise(newPath).catch(err => console.log(err))
+
+  if (!dimensions) {
+    return [null, "Something went wrong while compressing image."] as const;
+  }
+
+  return [
+    {
+      path: newPath,
+      filename: path.parse(newPath).name,
+      height: dimensions.height,
+      width: dimensions.width,
+      filesize: await fs.promises.stat(newPath).then((stat) => stat.size),
+      animated: (path.parse(opts.filename).ext == ".gif")
+    }, null] as const;
+}
 
 type Opts = Omit<
-  Omit<Omit<Omit<CompressImageOptions, "tempPath">, "filename">, "newPath">,
-  "crop"
+    Omit<Omit<Omit<CompressImageOptions, "tempPath">, "filename">, "newPath">,
+    "crop"
 > & {
   allowCrop?: boolean;
 };
+
 export const compressImageMiddleware = (opts: Opts) => {
   return async (req: Request, res: Response) => {
     if (req?.file?.shouldCompress) {
@@ -25,25 +107,40 @@ export const compressImageMiddleware = (opts: Opts) => {
 
       let strPoints = req.query.points as string | undefined;
       let crop:
-        | [number, number, number, number]
-        | [number, number]
-        | undefined = undefined;
+          | [number, number, number, number]
+          | [number, number]
+          | [undefined, undefined, undefined, undefined] = [undefined, undefined, undefined, undefined];
       if (opts.allowCrop) {
         const [dimensions, points, dimErr] = pointsToDimensions(strPoints);
         if (dimErr) {
           return res.status(403).json(dimErr);
         }
         crop = dimensions
-          ? [dimensions.width, dimensions.height, points[0]!, points[1]!]
-          : [opts.size[0], opts.size[1]];
+            ? [dimensions.width, dimensions.height, points[0]!, points[1]!]
+            : [opts.size[0], opts.size[1]];
+      }
+
+
+      let cropX: number | undefined = undefined;
+      if (crop[2] !== undefined && crop[0] !==  undefined) {
+        cropX = Math.round(crop[2] + (crop[0] / 2));
+      }
+      let cropY: number | undefined = undefined;
+      if (crop[3] !== undefined && crop[1] !==  undefined) {
+        cropY = Math.round(crop[3] + (crop[1] / 2));
       }
 
       const [result, err] = await compressImage({
-        ...opts,
         tempPath: tempFilePath,
         newPath: tempDirPath,
         filename: req.file.tempFilename,
-        crop,
+        cropWidth: crop[0],
+        cropHeight: crop[1],
+        cropX,
+        cropY,
+        size: opts.size,
+        quality: opts.quality,
+        gifSize: opts.gifSize,
       });
 
       if (err) {
@@ -52,31 +149,26 @@ export const compressImageMiddleware = (opts: Opts) => {
         });
         return;
       }
+
       if (closed) {
         removeFile(result.path);
         removeFile(tempFilePath);
 
         return;
       }
+
       req.file.filesize = result.filesize;
-      req.file.compressedFilename = result.newFilename;
-      req.file.compressedHeight = result.dimensions.height;
-      req.file.compressedWidth = result.dimensions.width;
-      req.file.animated = !!result.gif;
+      req.file.compressedFilename = result.filename;
+      req.file.compressedHeight = result.height;
+      req.file.compressedWidth = result.width;
+      req.file.animated = result.animated;
       req.file.originalFilename =
-        path.parse(req.file.originalFilename).name +
-        path.parse(result.newFilename).ext;
-      if (result.gif) {
-        req.file.mimetype = "image/gif";
-      } else {
-        req.file.mimetype = "image/webp";
-      }
-      if (req.file.tempFilename !== req.file.compressedFilename) {
-        removeFile(tempFilePath);
-        req.file.tempFilename =
-          path.parse(req.file.tempFilename).name +
-          path.parse(result.newFilename).ext;
-      }
+        path.parse(req.file.originalFilename).name + ".webp";
+      req.file.tempFilename =
+          path.parse(req.file.tempFilename).name + ".webp";
+      req.file.mimetype = "image/webp";
+
+      removeFile(tempFilePath);
     }
   };
 };
