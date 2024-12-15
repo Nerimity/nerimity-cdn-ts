@@ -19,7 +19,8 @@ interface CompressImageOptions {
   cropHeight?: number | undefined;
   cropX?: number | undefined;
   cropY?: number | undefined;
-  size: [number, number, "fit" | "fill"];
+  size: [number, number];
+  gifSize?: [number, number];
   quality?: number;
 }
 
@@ -45,7 +46,13 @@ async function compressImage(opts: CompressImageOptions) {
     crop += ` --crop-x ${opts.cropX} --crop-y ${opts.cropY}`;
   }
 
-  let size = `--width ${opts.size[0]} --height ${opts.size[1]}`
+  let size = `--width ${opts.size[0]} --height ${opts.size[1]}`;
+  
+  let gifSize = "";
+  
+  if (opts.gifSize) {
+    gifSize = `--gif-width ${opts.gifSize[0]} --gif-height ${opts.gifSize[1]}`;
+  }
 
   let quality = "";
 
@@ -54,7 +61,7 @@ async function compressImage(opts: CompressImageOptions) {
   }
 
 
-  const pixiedustStatus = await execPromise(`./pixiedust -i ${opts.tempPath} -o ${newPath} ${crop} ${size} ${quality}`).then(async (err) => {
+  const pixiedustStatus = await execPromise(`./pixiedust -i ${opts.tempPath} -o ${newPath} ${crop} ${size} ${gifSize} ${quality}`).then(async (err) => {
     if (err.stderr != "") {
       console.log(`Failed to compress!! ${err.stderr}`);
       return;
@@ -131,7 +138,9 @@ export const compressImageMiddleware = (opts: Opts) => {
         cropHeight: crop[1],
         cropX,
         cropY,
-        size: opts.size
+        size: opts.size,
+        quality: opts.quality,
+        gifSize: opts.gifSize,
       });
 
       if (err) {
