@@ -2,8 +2,8 @@ import { Server } from "hyper-express";
 import { Request, Response } from "hyper-express";
 import { fetchHeaders, getMimeByUrl, isImageMime, isUrl } from "../utils/utils";
 import { miniConvert } from "../utils/imageMagick";
-import http from 'http';
-import https from 'https';
+import http from "http";
+import https from "https";
 
 export function handleProxyImageRoute(server: Server) {
   server.get("/proxy/:imageUrl/:filename", route);
@@ -15,6 +15,14 @@ const route = async (req: Request, res: Response) => {
 
   const unsafeImageUrl = decodeURIComponent(req.params.imageUrl as string);
   const type = req.query.type;
+  let size = parseInt(req.query.size as string | "0");
+
+  if (size >= 1920) {
+    size = 1920;
+  }
+  if (!size) {
+    size = 0;
+  }
 
   if (!unsafeImageUrl || !isUrl(unsafeImageUrl)) {
     res.status(403).end();
@@ -34,8 +42,11 @@ const route = async (req: Request, res: Response) => {
   const protocol = urlRes.url.startsWith("https") ? https : http;
 
   const imageReq = protocol.get(urlRes.url, async (imageRes) => {
-    if (type === "webp") {
-      const [stream, error] = await miniConvert(imageRes, { static: true });
+    if (type || size) {
+      const [stream, error] = await miniConvert(imageRes, {
+        static: type === "webp",
+        size,
+      });
 
       if (error) {
         return res.status(403).end();
@@ -51,7 +62,6 @@ const route = async (req: Request, res: Response) => {
     imageRes.pipe(res);
   });
   imageReq.on("error", () => {
-    res.status(403).end()
+    res.status(403).end();
   });
-}
-
+};
