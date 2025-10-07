@@ -1,6 +1,12 @@
 import { Server } from "hyper-express";
 import { Request, Response } from "hyper-express";
-import { fetchHeaders, getMimeByUrl, isImageMime, isUrl } from "../utils/utils";
+import {
+  ensureNodeReadable,
+  fetchHeaders,
+  getMimeByUrl,
+  isImageMime,
+  isUrl,
+} from "../utils/utils";
 import { miniConvert } from "../utils/imageMagick";
 import http from "http";
 import https from "https";
@@ -56,7 +62,7 @@ const route = async (req: Request, res: Response) => {
       res.set("Accept-Ranges", "bytes");
       res.header("Content-Type", "image/webp");
 
-      stream!.pipe(res);
+      res.stream(ensureNodeReadable(stream.stream, res), stream.size);
       return;
     }
     imageRes.pipe(res);

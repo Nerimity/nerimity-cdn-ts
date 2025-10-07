@@ -1,4 +1,6 @@
 import fs from "fs";
+import { Readable } from "stream";
+import { Response as HyperResponse } from "hyper-express";
 const SupportedImages = [
   "image/jpeg",
   "image/jpg",
@@ -55,4 +57,22 @@ export async function deleteDirWithFileExclusion(
       force: true,
     });
   }
+}
+
+export function ensureNodeReadable(
+  stream: NodeJS.ReadableStream,
+  res: HyperResponse
+): Readable {
+  const readable = new Readable({
+    read() {
+      stream.on("data", (chunk) => this.push(chunk));
+      stream.on("end", () => this.push(null));
+      stream.on("error", (err) => {
+        this.destroy(err);
+        res.destroy();
+      });
+    },
+  });
+
+  return readable;
 }

@@ -11,6 +11,7 @@ import { Readable } from "stream";
 import { env } from "../env";
 import { decrypt } from "../utils/encryption";
 import { createReadStream } from "../utils/createStream";
+import { ensureNodeReadable } from "../utils/utils";
 
 export function handleGetFileRoute(server: Server) {
   server.get("/external-embed/*", (req, res) => {
@@ -97,19 +98,15 @@ const route = async (req: Request, res: Response, customPath?: string) => {
         return;
       }
 
-      const { stream, mime } = await getMimeType(inStream as Readable);
+      const { stream, mime } = await getMimeType(inStream.stream as Readable);
 
       res.set("Cache-Control", "public, max-age=1800");
       res.set("Accept-Ranges", "bytes");
       res.set("Content-Type", mime || "image/webp");
 
-      stream.pipe(res).on("error", () => {
-        if (!res.headersSent) {
-            res.end('Error streaming file.');
-        } else {
-          res.destroy();
-        }
-      })
+      // res.stream(ensureNodeReadable(stream, res), filesize);
+      res.stream(ensureNodeReadable(stream, res), inStream.size);
+
       return;
     }
   }
@@ -119,18 +116,12 @@ const route = async (req: Request, res: Response, customPath?: string) => {
     rawMime.mime.startsWith("image/") ||
     rawMime.mime.startsWith("video/mp4") ||
     rawMime.mime.startsWith("audio/mp3") ||
-    rawMime.mime.startsWith("audio/ogg")
+    rawMime.mime.startsWith("audio/opus")
   ) {
     res.set("Content-Type", rawMime.mime);
   } else {
     res.set("Content-Type", `application/octet-stream; charset=UTF-8`);
   }
 
-  rawMime.stream.pipe(res).on("error", () => {
-    if (!res.headersSent) {
-        res.end('Error streaming file.');
-    } else {
-      res.destroy();
-    }
-  })
+  res.stream(ensureNodeReadable(rawMime.stream, res), filesize);
 };
