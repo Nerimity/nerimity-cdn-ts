@@ -4,9 +4,6 @@ import path from "path";
 import { getMetadata } from "./sharp";
 import { Readable } from "stream";
 
-import os from "os";
-import crypto from "crypto";
-
 const imageMagick = gm.subClass({ imageMagick: "7+" });
 
 export interface CompressImageOptions {
@@ -61,6 +58,7 @@ export const compressImage = async (opts: CompressImageOptions) => {
   im = im.limit("disk", "512MB");
   im = im.out("-limit", "thread", "2");
 
+
   return asyncWrite(im, newPath)
     .then(async () => {
       const newMetadata = await getMetadata(newPath);
@@ -102,10 +100,6 @@ export async function miniConvert(
   pathOrStream: Readable | string,
   opts: MiniConvertOptions
 ) {
-  const tempDir = os.tmpdir();
-  const tempFilename = `mini-${crypto.randomUUID()}.webp`;
-  const tempPath = path.join(tempDir, tempFilename);
-
   let instance = imageMagick(pathOrStream as unknown as string);
   if (opts.static) instance = instance.selectFrame(0);
   if (opts.size) {
@@ -116,28 +110,15 @@ export async function miniConvert(
     }
   }
 
-  try {
-    await asyncWriteForMini(instance, tempPath);
-    const size = await fs.promises.stat(tempPath).then((s) => s.size);
-    const stream = fs.createReadStream(tempPath);
-
-    stream.on("close", () => {
-      fs.promises.unlink(tempPath).catch(() => {});
+  return asyncStream(instance, "webp")
+    .then((stream) => {
+      return [stream, null] as const;
+    })
+    .catch((err) => {
+      return [null, err] as const;
     });
+}
 
-    return [{ stream, size, tempPath }, null] as const;
-  } catch (err) {
-    return [null, err as Error] as const;
-  }
-}
-async function asyncWriteForMini(im: gm.State, filename: string) {
-  return new Promise<void>((res, rej) => {
-    im.write(filename, (err) => {
-      if (err) rej(err);
-      else res();
-    });
-  });
-}
 async function asyncStream(im: gm.State, format: string) {
   return new Promise<Readable>((res, rej) => {
     im.stream(format, (err, stream) => {
