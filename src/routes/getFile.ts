@@ -41,8 +41,9 @@ const route = async (req: Request, res: Response, customPath?: string) => {
   const urlPath = customPath || req.path;
   const decodedPath = path.join(
     path.dirname(urlPath),
-    decodeURI(path.basename(urlPath))
+    decodeURIComponent(path.basename(urlPath))
   );
+  console.log(req.url);
 
   if (decodedPath.includes("../"))
     return res.status(404).json({ error: "Not found" });
@@ -105,11 +106,11 @@ const route = async (req: Request, res: Response, customPath?: string) => {
 
       stream.pipe(res).on("error", () => {
         if (!res.headersSent) {
-            res.end('Error streaming file.');
+          res.end("Error streaming file.");
         } else {
           res.destroy();
         }
-      })
+      });
       return;
     }
   }
@@ -128,9 +129,9 @@ const route = async (req: Request, res: Response, customPath?: string) => {
 
   rawMime.stream.pipe(res).on("error", () => {
     if (!res.headersSent) {
-        res.end('Error streaming file.');
+      res.end("Error streaming file.");
     } else {
       res.destroy();
     }
-  })
+  });
 };

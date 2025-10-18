@@ -122,7 +122,8 @@ const route = async (req: Request, res: Response) => {
     path: path
       .join(
         newPath.relativeDirPath,
-        encodeURI(newPath.parsedFilePath.name) + newPath.parsedFilePath.ext
+        encodeURIComponent(newPath.parsedFilePath.name) +
+          newPath.parsedFilePath.ext
       )
       .replaceAll("\\", "/"),
     filesize: waitingVerification.filesize,
