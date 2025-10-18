@@ -43,7 +43,6 @@ const route = async (req: Request, res: Response, customPath?: string) => {
     path.dirname(urlPath),
     decodeURIComponent(path.basename(urlPath))
   );
-  console.log(req.url);
 
   if (decodedPath.includes("../"))
     return res.status(404).json({ error: "Not found" });
