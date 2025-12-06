@@ -43,7 +43,7 @@ const route = async (req: Request, res: Response) => {
     fileId: req.file.fileId,
     groupId: req.params.groupId as string,
     originalFilename: req.file.originalFilename,
-    duration,
+    duration: duration ? (duration * 1000) : undefined,
     tempFilename: req.file.tempFilename,
     animated: req.file.animated,
     compressed: !!req.file.compressedFilename,
