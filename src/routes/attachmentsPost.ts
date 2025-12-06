@@ -30,7 +30,7 @@ const route = async (req: Request, res: Response) => {
   }
 
 
-  const isAudio = req.file.mimetype === "audio/ogg" || req.file.mimetype === "audio/mp3";
+  const isAudio = req.file.mimetype === "audio/ogg" || req.file.mimetype === "audio/mp3" || req.file.mimetype === "audio/mpeg";
   const isVideo = req.file.mimetype === "video/mp4";
   let duration: number | undefined;
 
