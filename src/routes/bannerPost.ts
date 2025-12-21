@@ -13,7 +13,7 @@ export function handleBannersPostRoute(server: Server) {
     validGroupIdCheckMiddleware,
     tempFileMiddleware({ image: true }),
     compressImageMiddleware({
-      size: [1920, 1080, "fill"],
+      size: [3200, 1800, "fill"],
       allowCrop: true,
     }),
     route,
