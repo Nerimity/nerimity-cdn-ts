@@ -41,27 +41,38 @@ const route = async (req: Request, res: Response) => {
 
   const protocol = urlRes.url.startsWith("https") ? https : http;
 
-  const imageReq = protocol.get(urlRes.url, async (imageRes) => {
-    if (type || size) {
-      const [stream, error] = await miniConvert(imageRes, {
-        static: type === "webp",
-        size,
-      });
+  const imageReq = protocol.get(
+    urlRes.url,
+    {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        Referer: new URL(urlRes.url).origin,
+      },
+    },
+    async (imageRes) => {
+      if (type || size) {
+        const [stream, error] = await miniConvert(imageRes, {
+          static: type === "webp",
+          size,
+        });
 
-      if (error) {
-        return res.status(403).end();
+        if (error) {
+          return res.status(403).end();
+        }
+
+        res.set("Cache-Control", "public, max-age=1800");
+        res.set("Accept-Ranges", "bytes");
+        res.header("Content-Type", "image/webp");
+
+        stream!.pipe(res);
+        return;
       }
-
-      res.set("Cache-Control", "public, max-age=1800");
-      res.set("Accept-Ranges", "bytes");
-      res.header("Content-Type", "image/webp");
-
-      stream!.pipe(res);
-      return;
+      imageRes.pipe(res);
     }
-    imageRes.pipe(res);
-  });
-  imageReq.on("error", () => {
+  );
+  imageReq.on("error", (err) => {
+    console.log(err);
     res.status(403).end();
   });
 };
