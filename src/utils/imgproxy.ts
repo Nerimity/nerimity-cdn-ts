@@ -7,7 +7,6 @@ import * as imgproxy from "@imgproxy/imgproxy-js-core";
 import { finished, pipeline } from "stream/promises";
 import { removeFile } from "./imageMagick";
 
-const imageMagick = gm.subClass({ imageMagick: "7+" });
 
 export interface CompressImageOptions {
   tempPath: string;
@@ -76,7 +75,7 @@ export const imgproxyCompressImage = async (opts: CompressImageOptions) => {
   }
 
   const urlPath = imgproxy.generateUrl({
-    value: encodeURIComponent(`local:///${oldFilename}`),
+    value: encodeURIComponent(`local:///temp/${oldFilename}`),
     type: 'plain',
   }, {
     resize,
