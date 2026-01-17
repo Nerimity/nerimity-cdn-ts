@@ -28,7 +28,6 @@ export async function miniConvert(
   readable?: Readable
 ) {
 
-console.log(opts.static)
   if (!opts.static) {
     return miniConvertv2(_path, opts)
   }

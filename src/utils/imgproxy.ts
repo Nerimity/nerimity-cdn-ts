@@ -84,7 +84,6 @@ export const imgproxyCompressImage = async (opts: CompressImageOptions) => {
   });
 
   const fullUrl = `http://localhost:8888/pr:sharp${urlPath}@webp`;
-  console.log(fullUrl)
 
   const res = await fetch(fullUrl)
   if (!res.ok) return [null, "Could not compress image."] as const;
