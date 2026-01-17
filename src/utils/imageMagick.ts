@@ -32,7 +32,6 @@ export async function miniConvert(
     return miniConvertv2(_path, opts)
   }
   const fullPath = !opts.localPath ? _path :path.join(publicDirPath, _path);
-  console.trace("hmm", fullPath, readable)
   let instance = imageMagick((readable ||  fullPath) as unknown as string);
   if (opts.static) instance = instance.selectFrame(0);
   if (opts.size) {
