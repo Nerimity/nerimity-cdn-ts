@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@imgproxy/imgproxy-js-core':
+        specifier: ^1.7.0
+        version: 1.7.0
       '@nerimity/flakeid':
         specifier: ^1.0.3
         version: 1.0.3
@@ -358,6 +361,9 @@ packages:
     engines: {node: ^18.17.0 || ^20.3.0 || >=21.0.0}
     cpu: [x64]
     os: [win32]
+
+  '@imgproxy/imgproxy-js-core@1.7.0':
+    resolution: {integrity: sha512-NOitHDWUnlF/Co0bwotnFqAaUUXinrSB+pCLLXxpHVMpureWU5NgApeghoV/mRei1eBLnHRSdL7ZcjvlLWA06w==}
 
   '@isaacs/cliui@8.0.2':
     resolution: {integrity: sha512-O8jcjabXaleOG9DQ0+ARXWZBTfnP4WNAqzuiJK7ll44AmxGKv/J2M4TPjxjY3znBCfvBXFzucm1twdyFybFqEA==}
@@ -1509,6 +1515,8 @@ snapshots:
 
   '@img/sharp-win32-x64@0.33.5':
     optional: true
+
+  '@imgproxy/imgproxy-js-core@1.7.0': {}
 
   '@isaacs/cliui@8.0.2':
     dependencies:

@@ -87,10 +87,11 @@ const route = async (req: Request, res: Response, customPath?: string) => {
     }
 
     if (type || size) {
-      const [inStream, err] = await miniConvert(rawMime.stream as Readable, {
+      const [inStream, err] = await miniConvert(`${decodedPath}`, {
         size: size,
         static: type === "webp",
-      });
+        localPath: true
+      }, rawMime.stream);
       if (err) {
         console.error(err);
         res.status(500).end();

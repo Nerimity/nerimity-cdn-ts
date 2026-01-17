@@ -24,6 +24,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@imgproxy/imgproxy-js-core": "^1.7.0",
     "@nerimity/flakeid": "^1.0.3",
     "@nerimity/mimiqueue": "^1.2.3",
     "@prisma/client": "5.20.0",

@@ -20,6 +20,9 @@ const route = async (req: Request, res: Response) => {
   const paths = (body.paths as string[]).filter((path) => path);
 
   const promises = paths.map((pathToDelete) => {
+    if (pathToDelete.endsWith("#a")) {
+      pathToDelete = pathToDelete.slice(0, -2);
+    }
     const fullPath = path.join(publicDirPath, decodeURIComponent(pathToDelete));
     fs.promises.rm(fullPath, { recursive: true, force: true }).catch(() => {});
   });

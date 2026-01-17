@@ -3,105 +3,38 @@ import fs from "fs";
 import path from "path";
 import { getMetadata } from "./sharp";
 import { Readable } from "stream";
+import { imgproxyCompressImage, miniConvertv2 } from "./imgproxy";
+import { publicDirPath } from "./Folders";
 
 const imageMagick = gm.subClass({ imageMagick: "7+" });
 
-export interface CompressImageOptions {
-  tempPath: string;
-  newPath: string;
-  filename: string;
-  size: [number, number, "fit" | "fill"];
-  crop?: [number, number, number, number] | [number, number];
-}
 
-export const compressImage = async (opts: CompressImageOptions) => {
-  const oldMetadata = await getMetadata(opts.tempPath);
-  if (!oldMetadata) return [null, "Could not get metadata."] as const;
 
-  const isAnimated = !!oldMetadata.pages;
 
-  const parsedFilename = path.parse(opts.filename);
-  const newFilename = parsedFilename.name + (isAnimated ? ".gif" : ".webp");
 
-  await fs.promises.mkdir(opts.newPath, { recursive: true });
 
-  const newPath = path.join(opts.newPath, newFilename);
 
-  let im = imageMagick(opts.tempPath);
 
-  im = im.quality(90).autoOrient().coalesce();
-
-  if (!opts.crop) {
-    im = im.resize(
-      opts.size[0],
-      opts.size[1],
-      opts.size[2] === "fit" ? ">" : "^"
-    );
-  }
-
-  if (opts.crop && opts.crop?.length <= 2) {
-    im = im
-      .resize(opts.size[0], opts.size[1], opts.size[2] === "fit" ? ">" : "^")
-      .gravity("Center")
-      .crop.apply(im, opts.crop)
-      .repage("+");
-  }
-
-  if (opts.crop && opts.crop?.length > 2) {
-    im = im.crop
-      .apply(im, opts.crop)
-      .resize(opts.size[0], opts.size[1], opts.size[2] === "fit" ? ">" : "^")
-      .repage("+");
-  }
-
-  im = im.limit("memory", "512MB");
-  im = im.limit("disk", "512MB");
-  im = im.out("-limit", "thread", "2");
-
-  im = im.autoOrient().strip();
-
-  return asyncWrite(im, newPath)
-    .then(async () => {
-      const newMetadata = await getMetadata(newPath);
-      if (!newMetadata) {
-        removeFile(newPath);
-        return [null, "Could not get metadata."] as const;
-      }
-      return [
-        {
-          path: newPath,
-          newFilename,
-          filesize: await fs.promises.stat(newPath).then((stat) => stat.size),
-          dimensions: { width: newMetadata.width, height: newMetadata.height },
-          gif: isAnimated,
-        },
-        null,
-      ] as const;
-    })
-    .catch((err) => {
-      return [null, "Something went wrong while compressing image."] as const;
-    });
-};
-
-async function asyncWrite(im: gm.State, filename: string) {
-  return new Promise((res, rej) => {
-    im.write(filename, (err) => {
-      if (err) rej(err);
-      else res(true);
-    });
-  });
-}
 
 interface MiniConvertOptions {
   size?: number | [number, number];
   static?: boolean;
+  localPath?: boolean
 }
 
 export async function miniConvert(
-  pathOrStream: Readable | string,
-  opts: MiniConvertOptions
+  _path: string,
+  opts: MiniConvertOptions,
+  readable?: Readable
 ) {
-  let instance = imageMagick(pathOrStream as unknown as string);
+
+console.log(opts.static)
+  if (!opts.static) {
+    return miniConvertv2(_path, opts)
+  }
+  const fullPath = !opts.localPath ? _path :path.join(publicDirPath, _path);
+  console.trace("hmm", fullPath, readable)
+  let instance = imageMagick((readable ||  fullPath) as unknown as string);
   if (opts.static) instance = instance.selectFrame(0);
   if (opts.size) {
     if (typeof opts.size === "number") {

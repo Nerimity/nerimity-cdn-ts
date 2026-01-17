@@ -31,7 +31,7 @@ const route = async (req: Request, res: Response) => {
 
     const metadata = await getMetadata(await imageRes.arrayBuffer());
     if (!metadata) return res.status(403).end();
-    res.json({ height: metadata.height, width: metadata.width });
+    res.json({ height: metadata.height, width: metadata.width, animated: !!metadata.pages });
   } catch {
     res.status(403).end();
   }

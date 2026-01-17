@@ -11,11 +11,15 @@ export function handleDeleteFileRoute(server: Server) {
 }
 
 const route = async (req: Request, res: Response) => {
-  const { path: pathToDelete } = (await req.json({ path: undefined })) as {
+  let { path: pathToDelete } = (await req.json({ path: undefined })) as {
     path: string | undefined;
   };
   if (!pathToDelete) {
     return res.status(400).json({ error: "Missing path" });
+  }
+
+  if (pathToDelete.endsWith("#a")) {
+    pathToDelete = pathToDelete.slice(0, -2);
   }
 
   const fullPath = path.join(publicDirPath, decodeURIComponent(pathToDelete));

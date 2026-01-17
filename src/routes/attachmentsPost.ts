@@ -38,6 +38,7 @@ const route = async (req: Request, res: Response) => {
     duration = await getAudioDurationInSeconds(req.file.tempPath);
   }
 
+
   const result = await addToWaitingList({
     type: VerificationType.ATTACHMENT,
     fileId: req.file.fileId,

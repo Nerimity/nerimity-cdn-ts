@@ -1,12 +1,11 @@
 import { Request, Response } from "hyper-express";
 import {
-  compressImage,
-  CompressImageOptions,
   pointsToDimensions,
   removeFile,
 } from "../utils/imageMagick";
 import path from "path";
 import { tempDirPath } from "../utils/Folders";
+import { CompressImageOptions, imgproxyCompressImage } from "../utils/imgproxy";
 
 type Opts = Omit<
   Omit<Omit<Omit<CompressImageOptions, "tempPath">, "filename">, "newPath">,
@@ -35,10 +34,10 @@ export const compressImageMiddleware = (opts: Opts) => {
         }
         crop = dimensions
           ? [dimensions.width, dimensions.height, points[0]!, points[1]!]
-          : [opts.size[0], opts.size[1]];
+          : undefined;
       }
 
-      const [result, err] = await compressImage({
+      const [result, err] = await imgproxyCompressImage({
         ...opts,
         tempPath: tempFilePath,
         newPath: tempDirPath,
@@ -63,14 +62,11 @@ export const compressImageMiddleware = (opts: Opts) => {
       req.file.compressedHeight = result.dimensions.height;
       req.file.compressedWidth = result.dimensions.width;
       req.file.animated = !!result.gif;
+      req.file.mimetype = result.mimeType;
       req.file.originalFilename =
         path.parse(req.file.originalFilename).name +
         path.parse(result.newFilename).ext;
-      if (result.gif) {
-        req.file.mimetype = "image/gif";
-      } else {
-        req.file.mimetype = "image/webp";
-      }
+
       if (req.file.tempFilename !== req.file.compressedFilename) {
         removeFile(tempFilePath);
         req.file.tempFilename =

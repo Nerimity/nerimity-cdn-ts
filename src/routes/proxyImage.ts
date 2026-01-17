@@ -50,9 +50,12 @@ const route = async (req: Request, res: Response) => {
         Referer: new URL(urlRes.url).origin,
       },
     },
+    
     async (imageRes) => {
+
+
       if (type || size) {
-        const [stream, error] = await miniConvert(imageRes, {
+        const [stream, error] = await miniConvert(urlRes.url, {
           static: type === "webp",
           size,
         });
