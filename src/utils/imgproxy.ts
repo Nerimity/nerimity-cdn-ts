@@ -150,6 +150,7 @@ function calculateTargetDimensions(originalDims: [number, number], maxAllowed: [
 interface MiniConvertOptions {
   size?: number | [number, number];
   localPath?: boolean
+  static?: boolean
 }
 
 export async function miniConvertv2(
@@ -180,8 +181,7 @@ export async function miniConvertv2(
     ...(resize ? { resize } : {}),
   });
 
-  const fullUrl = `http://localhost:8888/pr:sharp${urlPath}@webp`;
-
+  const fullUrl = `http://localhost:8888/pr:sharp${opts.static ? "/page:0": ""}${urlPath}@webp`;
 
   const res = await fetch(fullUrl)
   if (!res.ok) return [null, "Could not compress image."] as const;

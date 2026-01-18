@@ -1,19 +1,5 @@
-import gm from "gm";
 import fs from "fs";
-import path from "path";
-import { getMetadata } from "./sharp";
-import { Readable } from "stream";
-import { imgproxyCompressImage, miniConvertv2 } from "./imgproxy";
-import { publicDirPath } from "./Folders";
-
-const imageMagick = gm.subClass({ imageMagick: "7+" });
-
-
-
-
-
-
-
+import { miniConvertv2 } from "./imgproxy";
 
 
 interface MiniConvertOptions {
@@ -25,40 +11,11 @@ interface MiniConvertOptions {
 export async function miniConvert(
   _path: string,
   opts: MiniConvertOptions,
-  readable?: Readable
 ) {
-
-  if (!opts.static) {
     return miniConvertv2(_path, opts)
-  }
-  const fullPath = !opts.localPath ? _path :path.join(publicDirPath, _path);
-  let instance = imageMagick((readable ||  fullPath) as unknown as string);
-  if (opts.static) instance = instance.selectFrame(0);
-  if (opts.size) {
-    if (typeof opts.size === "number") {
-      instance = instance.resize(opts.size, opts.size, ">");
-    } else {
-      instance = instance.resize(opts.size[0], opts.size[1], ">");
-    }
-  }
-
-  return asyncStream(instance, "webp")
-    .then((stream) => {
-      return [stream, null] as const;
-    })
-    .catch((err) => {
-      return [null, err] as const;
-    });
 }
 
-async function asyncStream(im: gm.State, format: string) {
-  return new Promise<Readable>((res, rej) => {
-    im.stream(format, (err, stream) => {
-      if (err) rej(err);
-      else res(stream);
-    });
-  });
-}
+
 
 export async function removeFile(path: string) {
   if (!path) return;
