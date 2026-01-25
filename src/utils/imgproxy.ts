@@ -184,7 +184,11 @@ export async function miniConvertv2(
   const fullUrl = `http://localhost:8888/pr:sharp${opts.static ? "/page:0": ""}${urlPath}@webp`;
 
   const res = await fetch(fullUrl)
-  if (!res.ok) return [null, "Could not compress image."] as const;
+  if (!res.ok) {
+    console.log(await res.text())
+    return [null, "Could not compress image."] as const;
+  }
+
 
   const stream = Readable.fromWeb(res.body!);
   return [stream, null] as const
