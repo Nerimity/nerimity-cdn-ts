@@ -26,13 +26,11 @@
   "dependencies": {
     "@imgproxy/imgproxy-js-core": "^1.7.0",
     "@nerimity/flakeid": "^1.0.3",
-    "@nerimity/mimiqueue": "^1.2.3",
     "@prisma/client": "5.20.0",
     "@types/node": "^22.6.1",
     "get-audio-duration": "^4.0.1",
     "gm": "^1.25.0",
     "hyper-express": "^6.17.2",
-    "redis": "^4.7.0",
     "sharp": "^0.33.5",
     "stream-mime-type": "^2.0.0"
   }

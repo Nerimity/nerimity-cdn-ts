@@ -1,16 +1,10 @@
-import { Request, Response, MiddlewareNext, Server } from "hyper-express";
-import fs, { stat, WriteStream } from "fs";
-import { generateId } from "../utils/flake";
+import { Request, Response } from "hyper-express";
+import fs from "fs";
 import path from "path";
 import { tempDirPath } from "../utils/Folders";
-import { pipeline } from "stream/promises";
-import { bytesToMb } from "../utils/bytes";
-import { env } from "../env";
-import { isImageMime, safeFilename } from "../utils/utils";
-import { redisClient } from "../utils/redis";
 import { prisma } from "../db";
 
-export const tempFileMiddleware = (opts?: { image?: boolean }) => {
+export const tempFileMiddleware = () => {
   return async (req: Request, res: Response) => {
     res.on("close", () => {
       if (res.statusCode && res.statusCode < 400) return;
