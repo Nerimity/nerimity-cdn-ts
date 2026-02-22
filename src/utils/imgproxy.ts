@@ -6,7 +6,7 @@ import { Readable } from "stream";
 import * as imgproxy from "@imgproxy/imgproxy-js-core";
 import { finished, pipeline } from "stream/promises";
 import { removeFile } from "./imageMagick";
-
+import { log } from "./logger";
 
 export interface CompressImageOptions {
   tempPath: string;
@@ -24,23 +24,18 @@ export const imgproxyCompressImage = async (opts: CompressImageOptions) => {
 
   const parsedFilename = path.parse(opts.filename);
   const oldFilename = parsedFilename.base;
-  const newFilename = parsedFilename.name + ".webp"
+  const newFilename = parsedFilename.name + ".webp";
   const newPath = path.join(opts.newPath, newFilename);
 
-
   await fs.promises.mkdir(opts.newPath, { recursive: true });
-
-
-
-
 
   const aspectRatio = opts.size[0] / opts.size[1];
 
   const targetDimensions = calculateTargetDimensions(
     [oldMetadata.width!, oldMetadata.height!],
     [opts.size[0], opts.size[1]],
-    aspectRatio
-  )
+    aspectRatio,
+  );
 
   let resize: imgproxy.Resize;
 
@@ -65,38 +60,44 @@ export const imgproxyCompressImage = async (opts: CompressImageOptions) => {
 
     crop = {
       gravity: {
-        type: 'nowe',
+        type: "nowe",
         x_offset: cropX,
-        y_offset: cropY
+        y_offset: cropY,
       },
       width: cropWidth,
       height: cropHeight,
     };
   }
 
-  const urlPath = imgproxy.generateUrl({
-    value: encodeURIComponent(`local:///temp/${oldFilename}`),
-    type: 'plain',
-  }, {
-    resize,
-    ...(crop && { crop }),
-  });
+  const urlPath = imgproxy.generateUrl(
+    {
+      value: encodeURIComponent(`local:///temp/${oldFilename}`),
+      type: "plain",
+    },
+    {
+      resize,
+      ...(crop && { crop }),
+    },
+  );
 
   const fullUrl = `http://localhost:8888/pr:sharp${urlPath}@webp`;
 
-  const res = await fetch(fullUrl)
+  const res = await fetch(fullUrl).catch((e) => {
+    log("COMPRESS", "error", "Error fetching from imgproxy:", e);
+    return null;
+  });
+  if (!res) {
+    return [null, "Could not fetch image."] as const;
+  }
   if (!res.ok) return [null, "Could not compress image."] as const;
 
-  await pipeline(
-    Readable.fromWeb(res.body!),
-    createWriteStream(newPath)
-  );
+  await pipeline(Readable.fromWeb(res.body!), createWriteStream(newPath));
   const newMetadata = await getMetadata(newPath);
   if (!newMetadata) {
     removeFile(newPath);
     return [null, "Could not get metadata."] as const;
   }
-  const data =  [
+  const data = [
     {
       path: newPath,
       newFilename,
@@ -104,18 +105,18 @@ export const imgproxyCompressImage = async (opts: CompressImageOptions) => {
       dimensions: { width: newMetadata.width, height: newMetadata.height },
       gif: isAnimated,
       mimeType: "image/webp",
-    }, null
-  ] as const
+    },
+    null,
+  ] as const;
 
   return data;
-
-
 };
 
-
-
-
-function calculateTargetDimensions(originalDims: [number, number], maxAllowed: [number, number], aspectRatio: number) {
+function calculateTargetDimensions(
+  originalDims: [number, number],
+  maxAllowed: [number, number],
+  aspectRatio: number,
+) {
   const [origW, origH] = originalDims;
   const [maxW, maxH] = maxAllowed;
 
@@ -142,28 +143,23 @@ function calculateTargetDimensions(originalDims: [number, number], maxAllowed: [
 
   return {
     width: Math.round(width * finalScale),
-    height: Math.round(height * finalScale)
+    height: Math.round(height * finalScale),
   };
 }
 
-
 interface MiniConvertOptions {
   size?: number | [number, number];
-  localPath?: boolean
-  static?: boolean
+  localPath?: boolean;
+  static?: boolean;
 }
 
-export async function miniConvertv2(
-  path:  string,
-  opts: MiniConvertOptions
-) {
-
-  let resize: imgproxy.Resize | null = null
+export async function miniConvertv2(path: string, opts: MiniConvertOptions) {
+  let resize: imgproxy.Resize | null = null;
 
   if (opts.size) {
     resize = {
       resizing_type: "fit",
-    }
+    };
     if (typeof opts.size === "number") {
       resize.width = opts.size;
       resize.height = opts.size;
@@ -173,24 +169,32 @@ export async function miniConvertv2(
     }
   }
 
+  const urlPath = imgproxy.generateUrl(
+    {
+      value: encodeURIComponent(
+        !opts.localPath ? path : `local:///public/${path}`,
+      ),
+      type: "plain",
+    },
+    {
+      ...(resize ? { resize } : {}),
+    },
+  );
 
-  const urlPath = imgproxy.generateUrl({
-    value: encodeURIComponent(!opts.localPath ? path : `local:///public/${path}`),
-    type: 'plain',
-  }, {
-    ...(resize ? { resize } : {}),
+  const fullUrl = `http://localhost:8888/pr:sharp${opts.static ? "/page:0" : ""}${urlPath}@webp`;
+
+  const res = await fetch(fullUrl).catch((e) => {
+    log("COMPRESS", "error", "Error fetching from imgproxy MINI-CONVERT:", e);
+    return null;
   });
-
-  const fullUrl = `http://localhost:8888/pr:sharp${opts.static ? "/page:0": ""}${urlPath}@webp`;
-
-  const res = await fetch(fullUrl)
+  if (!res) {
+    return [null, "Could not fetch image."] as const;
+  }
   if (!res.ok) {
-    console.log(await res.text())
+    console.log(await res.text());
     return [null, "Could not compress image."] as const;
   }
 
-
   const stream = Readable.fromWeb(res.body!);
-  return [stream, null] as const
-
+  return [stream, null] as const;
 }

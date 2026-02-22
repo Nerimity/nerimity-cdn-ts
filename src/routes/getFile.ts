@@ -11,6 +11,7 @@ import { Readable } from "stream";
 import { env } from "../env";
 import { decrypt } from "../utils/encryption";
 import { createReadStream } from "../utils/createStream";
+import { log } from "../utils/logger";
 
 export function handleGetFileRoute(server: Server) {
   server.get("/external-embed/*", (req, res) => {
@@ -18,7 +19,7 @@ export function handleGetFileRoute(server: Server) {
       const encryptedPath = req.path.split("/").slice(2).join("/");
       const path = decrypt(
         encryptedPath.split(".")[0]!,
-        env.EXTERNAL_EMBED_SECRET
+        env.EXTERNAL_EMBED_SECRET,
       );
       route(req, res, path).catch((err) => {
         res.status(500).json({ error: "Internal server error" });
@@ -41,7 +42,7 @@ const route = async (req: Request, res: Response, customPath?: string) => {
   const urlPath = customPath || req.path;
   const decodedPath = path.join(
     path.dirname(urlPath),
-    decodeURIComponent(path.basename(urlPath))
+    decodeURIComponent(path.basename(urlPath)),
   );
 
   if (decodedPath.includes("../"))
@@ -90,10 +91,15 @@ const route = async (req: Request, res: Response, customPath?: string) => {
       const [inStream, err] = await miniConvert(`${decodedPath}`, {
         size: size,
         static: type === "webp",
-        localPath: true
-      }, rawMime.stream);
+        localPath: true,
+      });
       if (err) {
-        console.error(err);
+        log(
+          "COMPRESS",
+          "error",
+          " routes/getFile.ts Error converting image:",
+          err,
+        );
         res.status(500).end();
         return;
       }

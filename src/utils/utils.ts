@@ -44,7 +44,7 @@ export async function getMimeByUrl(res: Response | undefined | null) {
 
 export async function deleteDirWithFileExclusion(
   path: string,
-  excludeFilePath: string
+  excludeFilePath: string,
 ) {
   const files = await fs.promises.readdir(path, { withFileTypes: true });
 
