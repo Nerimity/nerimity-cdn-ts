@@ -4,7 +4,7 @@ type Failure = [null, Error];
 type Result<T> = Success<T> | Failure;
 
 export function createWriteStream(
-  path: string
+  path: string,
 ): Promise<Result<fs.WriteStream>> {
   return new Promise((resolve) => {
     const stream = fs.createWriteStream(path);
@@ -22,12 +22,19 @@ export function createWriteStream(
 export function createReadStream(path: string): Promise<Result<fs.ReadStream>> {
   return new Promise((resolve) => {
     const stream = fs.createReadStream(path);
+
+    const cleanup = () => {
+      stream.removeAllListeners("error");
+      stream.removeAllListeners("open");
+    };
+
     stream.once("error", (err) => {
-      stream.removeAllListeners();
+      cleanup();
       resolve([null, err]);
     });
 
-    stream.once("ready", () => {
+    stream.once("open", () => {
+      cleanup();
       resolve([stream, null]);
     });
   });
